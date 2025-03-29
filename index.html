@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Korean Bible Reader</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+    select, input, button { margin: 5px; padding: 8px; }
+    #verses { margin-top: 20px; }
+    .verse { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Korean Bible Reader</h1>
+
+  <label for="book">Book:</label>
+  <select id="book"></select>
+
+  <label for="chapter">Chapter:</label>
+  <select id="chapter"></select>
+
+  <button onclick="loadChapter()">Load</button>
+
+  <br><br>
+  <input type="text" id="search" placeholder="Search keyword...">
+  <button onclick="searchKeyword()">Search</button>
+
+  <div id="verses"></div>
+
+  <script>
+    let bible = {};
+    let currentBook = '';
+    let currentChapter = '';
+
+    fetch('./bible.json')
+      .then(res => res.json())
+      .then(data => {
+        bible = data;
+        populateBooks();
+      })
+      .catch(err => {
+        document.getElementById('verses').innerHTML = '<p style="color:red">Failed to load bible.json. Are you running from a server?</p>';
+        console.error(err);
+      });
+
+    function populateBooks() {
+      const bookSet = new Set(Object.keys(bible).map(ref => ref.match(/^[^\d]+/)[0]));
+      const bookSelect = document.getElementById('book');
+      bookSet.forEach(book => {
+        const option = document.createElement('option');
+        option.value = book;
+        option.textContent = book;
+        bookSelect.appendChild(option);
+      });
+      populateChapters();
+    }
+
+    function populateChapters() {
+      const book = document.getElementById('book').value;
+      const chapterSet = new Set(
+        Object.keys(bible)
+          .filter(ref => ref.startsWith(book))
+          .map(ref => ref.match(/^\D+(\d+):/)[1])
+      );
+      const chapterSelect = document.getElementById('chapter');
+      chapterSelect.innerHTML = '';
+      chapterSet.forEach(chap => {
+        const option = document.createElement('option');
+        option.value = chap;
+        option.textContent = chap;
+        chapterSelect.appendChild(option);
+      });
+    }
+
+    document.getElementById('book').addEventListener('change', populateChapters);
+
+    function loadChapter() {
+      const book = document.getElementById('book').value;
+      const chapter = document.getElementById('chapter').value;
+      const prefix = `${book}${chapter}`;
+      const verses = Object.entries(bible).filter(([ref]) => ref.startsWith(prefix));
+
+      const container = document.getElementById('verses');
+      container.innerHTML = `<h2>${book} ${chapter}</h2>`;
+      verses.forEach(([ref, text]) => {
+        const p = document.createElement('p');
+        p.className = 'verse';
+        p.innerHTML = `<strong>${ref}</strong>: ${text}`;
+        container.appendChild(p);
+      });
+    }
+
+    function searchKeyword() {
+      const query = document.getElementById('search').value;
+      const results = Object.entries(bible).filter(([ref, text]) => text.includes(query));
+      const container = document.getElementById('verses');
+      container.innerHTML = `<h2>Search results for "${query}"</h2>`;
+      results.forEach(([ref, text]) => {
+        const p = document.createElement('p');
+        p.className = 'verse';
+        p.innerHTML = `<strong>${ref}</strong>: ${text}`;
+        container.appendChild(p);
+      });
+    }
+  </script>
+</body>
+</html>
